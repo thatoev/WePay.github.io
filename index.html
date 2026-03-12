@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyPay Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+<div class="logo">MyPay</div>
+<nav>
+<button onclick="showPage('home')">Home</button>
+<button id="loginBtn" onclick="showPage('login')">Login</button>
+<button id="signupBtn" onclick="showPage('signup')">Sign Up</button>
+<button id="dashBtn" onclick="showPage('dashboard')" style="display:none;">Dashboard</button>
+<button id="profileBtn" onclick="showPage('profile')" style="display:none;">Profile</button>
+<button id="securityBtn" onclick="showPage('security')" style="display:none;">Security</button>
+<button id="usersBtn" onclick="showPage('users')" style="display:none;">Users</button>
+<button id="themeBtn" onclick="toggleTheme()" style="display:none;">Toggle Theme</button>
+<button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
+</nav>
+</header>
+
+<main>
+
+<section id="home" class="page active">
+<h1 id="welcomeTitle">Welcome</h1>
+<p>Secure account system demo.</p>
+</section>
+
+<section id="login" class="page">
+<h2>Login</h2>
+<input id="loginUser" placeholder="Username">
+<input id="loginPass" type="password" placeholder="Password">
+<button class="primary" onclick="login()">Login</button>
+<p id="loginMsg" class="msg"></p>
+</section>
+
+<section id="signup" class="page">
+<h2>Create Account</h2>
+<input id="signupUser" placeholder="Username">
+<input id="signupPass" type="password" placeholder="Password">
+<button class="primary" onclick="signup()">Create Account</button>
+<p id="signupMsg" class="msg"></p>
+</section>
+
+<section id="dashboard" class="page">
+<h2>Dashboard</h2>
+<div class="cards">
+<div class="card">Welcome, <span id="profileUser"></span></div>
+<div class="card">Account Created: <span id="profileDate"></span></div>
+<div class="card">Total Users: <span id="totalUsers"></span></div>
+</div>
+</section>
+
+<section id="profile" class="page">
+<h2>Edit Profile</h2>
+<input id="newUsername" placeholder="New Username">
+<button class="primary" onclick="changeUsername()">Update Username</button>
+<p id="profileMsg" class="msg"></p>
+</section>
+
+<section id="security" class="page">
+<h2>Security</h2>
+<input id="oldPass" type="password" placeholder="Current Password">
+<input id="newPass" type="password" placeholder="New Password">
+<button class="primary" onclick="changePassword()">Change Password</button>
+<p id="securityMsg" class="msg"></p>
+</section>
+
+<section id="users" class="page">
+<h2>User Database</h2>
+<div class="card">
+<ul id="userList"></ul>
+</div>
+</section>
+
+</main>
+
+<!-- Welcome Popup -->
+<div id="welcomePopup" class="popup">
+<div class="popupBox">
+<h2>Welcome back!</h2>
+<p id="popupUser"></p>
+<button class="primary" onclick="closePopup()">Continue</button>
+</div>
+</div>
+
+<!-- Notification -->
+<div id="notify" class="notify"></div>
+
+<script>
+// Page navigation
+function showPage(id){
+if(["dashboard","profile","security","users"].includes(id) && !localStorage.getItem("session")){
+showPage("login");
+return;
+}
+document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+if(id==="users") loadUsers();
+}
+
+// Database helpers
+function getUsers(){ return JSON.parse(localStorage.getItem("users") || "{}"); }
+function saveUsers(users){ localStorage.setItem("users", JSON.stringify(users)); }
+
+// Notifications
+function notify(msg,type="success"){
+const n=notify;
+n.innerText=msg;
+n.className=`notify ${type}`;
+n.style.opacity=1;
+setTimeout(()=>n.style.opacity=0,3000);
+}
+
+// Signup
+function signup(){
+let user=signupUser.value.trim();
+let pass=signupPass.value.trim();
+if(!user||!pass){signupMsg.innerText="Fill all fields"; return;}
+let users=getUsers();
+if(users[user]){signupMsg.innerText="User exists"; return;}
+users[user]={password:pass, created:new Date().toLocaleDateString()};
+saveUsers(users);
+signupMsg.innerText="Account created!";
+notify("Account created!");
+}
+
+// Login
+function login(){
+let user=loginUser.value.trim();
+let pass=loginPass.value.trim();
+let users=getUsers();
+if(users[user] && users[user].password===pass){
+localStorage.setItem("session",user);
+setLoggedIn(user);
+showPage("dashboard");
+notify("Login successful!");
+}else{loginMsg.innerText="Invalid login";}
+}
+
+// Logout
+function logout(){
+localStorage.removeItem("session");
+setLoggedOut();
+showPage("home");
+notify("Logged out");
+}
+
+// UI states
+function setLoggedIn(user){
+loginBtn.style.display="none"; signupBtn.style.display="none";
+dashBtn.style.display="inline-block"; profileBtn.style.display="inline-block";
+securityBtn.style.display="inline-block"; usersBtn.style.display="inline-block";
+logoutBtn.style.display="inline-block"; themeBtn.style.display="inline-block";
+welcomeTitle.innerText="Welcome "+user;
+let users=getUsers();
+profileUser.innerText=user;
+profileDate.innerText=users[user].created;
+totalUsers.innerText=Object.keys(users).length;
+}
+
+function setLoggedOut(){
+loginBtn.style.display="inline-block"; signupBtn.style.display="inline-block";
+dashBtn.style.display="none"; profileBtn.style.display="none";
+securityBtn.style.display="none"; usersBtn.style.display="none";
+logoutBtn.style.display="none"; themeBtn.style.display="none";
+welcomeTitle.innerText="Welcome";
+}
+
+// Profile edit
+function changeUsername(){
+let newUser=newUsername.value.trim();
+let user=localStorage.getItem("session");
+let users=getUsers();
+if(!newUser){profileMsg.innerText="Enter username"; return;}
+if(users[newUser]){profileMsg.innerText="Username exists"; return;}
+users[newUser]=users[user]; delete users[user];
+saveUsers(users); localStorage.setItem("session",newUser);
+setLoggedIn(newUser); profileMsg.innerText="Username updated"; notify("Username changed!");
+}
+
+// Security
+function changePassword(){
+let old=oldPass.value, newP=newPass.value;
+let user=localStorage.getItem("session");
+let users=getUsers();
+if(users[user].password!==old){securityMsg.innerText="Wrong password"; return;}
+users[user].password=newP; saveUsers(users);
+securityMsg.innerText="Password updated"; notify("Password changed!");
+}
+
+// User database
+function loadUsers(){
+let users=getUsers(); userList.innerHTML="";
+for(let u in users){
+let li=document.createElement("li");
+li.innerText=u+" (created "+users[u].created+")";
+userList.appendChild(li);
+}
+totalUsers.innerText=Object.keys(users).length;
+}
+
+// Welcome popup
+function showPopup(user){popupUser.innerText="Good to see you again "+user; welcomePopup.style.display="flex";}
+function closePopup(){welcomePopup.style.display="none";}
+
+// Theme toggle
+let dark=false;
+function toggleTheme(){
+dark=!dark;
+document.body.classList.toggle("dark",dark);
+notify("Theme changed!");
+}
+
+// Session restore
+window.onload=()=>{
+let session=localStorage.getItem("session");
+if(session){setLoggedIn(session); showPopup(session);}
+}
+
+// Keyboard shortcuts: Ctrl+L logout
+document.addEventListener('keydown',e=>{
+if(e.ctrlKey && e.key.toLowerCase()==='l'){logout();}
+});
+</script>
+
+</body>
+</html>
